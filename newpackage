@@ -1,0 +1,56 @@
+#!/bin/sh -x
+function usage()
+{
+    echo "usage: $0 PACKAGENAME"
+    exit 77
+}
+
+function ensure_package()
+{
+    rpm -q $1 || exit 44
+}
+
+function guesslicense()
+{
+    # guess license from tar
+    # and return entry according to http://spdx.org/licenses
+    local tarname=$1
+    local dirname=$2
+    tar xf $tarname
+    pushd $2
+    found=
+    for f in COPYING COPYRIGHT LICENSE ; do
+        test -e $f && found=$f
+    done
+    if [[ -n $found ]] ; then
+        if grep -q "Apache License" $found && grep -q "Version 2.0, January 2004" $found ; then
+            echo Apache-2.0
+        fi
+    fi
+    popd
+}
+
+name=$1
+if [[ -z "$name" ]] ; then
+    usage
+fi
+
+#guesslicense openstacksdk-0.7.1.tar.gz openstacksdk-0.7.1 ;exit 0
+
+osc mkpac $name
+cd $name
+if [[ $name =~ ^python- ]] ; then
+    ensure_package python-py2pack
+    pyname=${name##python-}
+    py2pack fetch $pyname
+    v=$(echo $pyname-*.tar.gz | sed -e "s/$pyname-//;s/\.tar\.gz//")
+    py2pack generate -t opensuse.spec -f $name.spec $pyname
+    license=$(guesslicense $pyname-*.tar.gz $pyname-$v)
+    sed -i -e "s/License:/License:        $license/" $name.spec
+    osc vc -m "initial version $v"
+    echo "cd $name ; vim *.spec"
+fi
+
+if [[ $name =~ ^perl- ]] ; then
+    ensure_package cpanspec
+fi

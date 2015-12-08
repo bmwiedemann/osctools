@@ -1,0 +1,5 @@
+#!/bin/sh
+dir=${1:-.}
+echo -e "#!/bin/sh\ncd rpmbuild/BUILD/*/ ; bash" > $dir/tmp/myshell
+chmod a+x $dir/tmp/myshell
+chroot $dir su - abuild -s "/tmp/myshell"

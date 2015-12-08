@@ -1,0 +1,14 @@
+#!/bin/sh -x
+name=$(basename `pwd`)
+pyname=${name##python-}
+oldver=$(echo $pyname-*.tar.gz | sed -e "s/$pyname-//;s/\.tar\.gz//")
+osc rm *.tar.gz
+py2pack fetch $pyname
+newver=$(echo $pyname-*.tar.gz | sed -e "s/$pyname-//;s/\.tar\.gz//")
+osc ar
+sed -i -e "s/\(Version: *\)$oldver/\\1$newver/" $name.spec
+tar xf $pyname-$newver.tar.gz
+grep -B500 $oldver $pyname-$newver/ChangeLog | grep -v -e "Updated from global requirements" | cat - $name.changes > $name.changes.new
+mv $name.changes.new $name.changes
+osc vc -m "Update to version $newver"
+echo "edit $name.changes"
